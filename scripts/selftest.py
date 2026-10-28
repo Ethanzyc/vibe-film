@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Planted-fault selftest for the vibe-film checkers (checker validity, learned from
-wheresryan22/anatomy: "a control that doesn't fail means the check is broken").
+"""Planted-fault selftest for the vibe-film checkers (checker validity:
+"a control that doesn't fail means the check is broken").
 
 Every checker change must pass this BEFORE it ships: a good fixture must pass both
 checkers, and each planted fault must be caught with the expected message. Fixtures

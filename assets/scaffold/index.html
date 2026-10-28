@@ -17,7 +17,7 @@
 <script src="timeline.js"></script>  <!-- 唯一时钟与文案真相源：BAR/DUR/SHOTS/HOLDS/IMPACTS/CUES/COPY 常量 -->
 <script src="scenes.js"></script>    <!-- 各镜画面函数：每个 shot 是 (ctx, t, lt, dur) => 画整帧 -->
 <script>
-// ── 规则烘焙 helper（学 anatomy「make helpers do it, so nothing escapes」）──
+// ── 规则烘焙 helper（make helpers do it, so nothing escapes）──
 // 规则不靠自觉靠工具：白闪/金词/字幕停留三类高频违规，在构建期直接抛错。
 // 白闪：只允许落在 timeline.js 白名单秒上、恰 1 帧（30fps）。画白闪一律走这里，
 // 绕过白名单手画 = check-build.py 会抓（代码 cue ↔ 表内白闪窗对账）。

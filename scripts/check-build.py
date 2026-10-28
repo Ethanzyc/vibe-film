@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Static cross-audit of a rendered/renders-in-progress vibe-film project (no rendering).
 
-Learning from Vincentwei1021/anything2explainer's selfcheck.py: pixel-based QC has blind
+Design note: pixel-based QC has blind
 spots; the cheapest reliable check is reconciling SOURCE LITERALS against the storyboard
 (the reviewed single source of truth). Real-world catch it is designed for: a counter
 silently edited in JS (2022 -> 2023) that every frame-watching QC agent missed.
@@ -340,7 +340,7 @@ def main():
         nz = norm(z)
         if nz not in table_zh_sents and nz not in table_zh_cells \
                 and not any(cz in nz or nz in cz for cz in table_zh_sents):
-            fails.append(f"{seg_name}: 代码 COPY 字幕在分镜表中不存在（漂移——a2e 2022→2023 类）: {z[:28]}")
+            fails.append(f"{seg_name}: 代码 COPY 字幕在分镜表中不存在（字幕漂移类）: {z[:28]}")
     for (seg_name, z) in all_advisory_zh:
         nz = norm(z)
         if nz not in table_zh_sents and nz not in table_zh_cells \

@@ -10,7 +10,7 @@
 - **九列运动脚本级分镜**：同模型同工具的对照实验证明，成片差距 60-70% 在分镜规格——本 skill 强制九列逐镜表，不许一句话意图
 - **对标帧逆向**：审美靠与对标帧并排比对收敛，不靠模型自由发挥
 - **契约基准截图分段并行**：多段生产时共用 UI 像素级同构（纯文字契约已被实测证伪）
-- **源码级对账**：check-build.py 把段代码字幕逐字与分镜表对账、白闪对白名单、DUR 对总时长（学 anything2explainer selfcheck：像素 QC 的盲区由源码审计补）
+- **源码级对账**：check-build.py 把段代码字幕逐字与分镜表对账、白闪对白名单、DUR 对总时长（源码审计思路：像素 QC 的盲区由源码对账补）
 
 ## 结构
 
@@ -47,11 +47,11 @@ vibe-film/
 | 片 | 时长 | 生产 | 结果 |
 |---|---|---|---|
 | 90s 首跑验证片（图灵停机问题） | 90s | 两段并行 | 三项工艺未验证项全部关闭 |
-| 2:15 首支正片（RAG×记忆重构） | 2:15 | 四段并行 | 已定时发布 B 站（2026-11-08） |
+| 2:15 首支正片（RAG×记忆重构） | 2:15 | 四段并行 | 已定时发布（2026-11-08） |
 
 v1.3-v1.6 期间产线续跑六支以上：matter.js 倒塌+WebGL 丁达尔（能力展示镜首战）、荀子性恶论多工具并行、执笔动画等主题（各自状态见各片实验目录台账；正片 check-build 对账抓出三例「工单偏差未回写表」判例）。
 
-**v1.8.0（2026-10-27）CUES 事件层（音画同表，C 档）**：段码 timeline.js 的 `CUES=[{t,sfx}]` 一处声明、画面（scaffold `cuePulse()` 点亮脉冲）与声音（`gen-sfx.py` 事件音效轨）两边消费；`check-build.py` 校验 CUES 越界/词表并 `--export-cues` 导出；`assemble.sh` 支持 `SFX=` 第三轨混音；SFX 合成原语抽 `sfx_lib.py` 共享库（gen-audio 改引用，md5 逐字节回归验证）。判例：promo 片的节点点亮（bell=点亮/tick 上行阶梯=密度即推进/shimmer=全亮）。**v1.7.0（2026-10-27）音画卡点**：自 motion-showreel 迁入三件量化工具（`beats.py` 真曲节拍网格 / `check-audio.py` drop 呼吸与响度判据 / `fit-grid.py` 对标片剪点网格）与落拍三公式、音效对照表、声音默认味清单；gen-audio.py 改为「吸气→静音→撞击」曲线。**拍板定版：真曲片分镜时间列基准 = beats.py 检测网格**，`check-storyboard.py --grid <beats.json>` 校验边界落拍。判据与边界见 audio.md；演示判例为实验目录的 `演示-音画卡点v2.md`（真曲卡点 A/B：同曲同画只差网格相位）。
+**v1.8.0（2026-10-27）CUES 事件层（音画同表，C 档）**：段码 timeline.js 的 `CUES=[{t,sfx}]` 一处声明、画面（scaffold `cuePulse()` 点亮脉冲）与声音（`gen-sfx.py` 事件音效轨）两边消费；`check-build.py` 校验 CUES 越界/词表并 `--export-cues` 导出；`assemble.sh` 支持 `SFX=` 第三轨混音；SFX 合成原语抽 `sfx_lib.py` 共享库（gen-audio 改引用，md5 逐字节回归验证）。判例：promo 片的节点点亮（bell=点亮/tick 上行阶梯=密度即推进/shimmer=全亮）。**v1.7.0（2026-10-27）音画卡点**：迁入三件量化工具（`beats.py` 真曲节拍网格 / `check-audio.py` drop 呼吸与响度判据 / `fit-grid.py` 对标片剪点网格）与落拍三公式、音效对照表、声音默认味清单；gen-audio.py 改为「吸气→静音→撞击」曲线。**拍板定版：真曲片分镜时间列基准 = beats.py 检测网格**，`check-storyboard.py --grid <beats.json>` 校验边界落拍。判据与边界见 audio.md；演示判例为实验目录的 `演示-音画卡点v2.md`（真曲卡点 A/B：同曲同画只差网格相位）。
 
 ## 安装
 

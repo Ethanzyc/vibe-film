@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SFX 合成原语共享库 —— gen-audio.py（BGM 内嵌音效）与 gen-sfx.py（CUES 事件层）共用。
 单一实现防漂移：改任何一个音色，两条产线同时生效。
-机制来源：motion-showreel synth.mjs 词表（2026-10-27 调研迁移）+ 本产线 impact/whoosh/riser 判例。
+机制来源：2026-10-27 迁移定版的合成词表 + 本产线 impact/whoosh/riser 判例。
 所有函数确定性（rng 由调用方传入，seed 相同则逐字节复现）。
 """
 import numpy as np
