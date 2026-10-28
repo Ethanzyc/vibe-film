@@ -1,0 +1,13 @@
+{
+  "name": "vibe-film",
+  "version": "1.8.0",
+  "category": "Knowledge Emotion Short Film / Code-driven Video",
+  "description": "Philosophy-gated no-voiceover knowledge films: 5-question topic gate, 9-column motion-script storyboard, benchmark-frame reverse engineering before coding, baseline-screenshot segmented parallel rendering, deterministic frame-exact audio alignment with quantified beat-sync QA (real-song beat-grid detection, drop-breath check, reference cut-grid fitting) and a CUES audio-visual event table (per-event SFX synthesis: node lightups, ticks, shimmers over BGM), source-level build audit (copy literals vs storyboard), rework-cost-ordered human gates (storyboard review, BGM sample listen, style frames + money-shot sample clips, hash-bound publish confirmation). Validated on two published films (90s, 2:15) plus an audio-sync A/B demo on a 120s film.",
+  "compat": [
+    "claude-code",
+    "zcode",
+    "pi",
+    "codex-cli",
+    "cursor"
+  ]
+}

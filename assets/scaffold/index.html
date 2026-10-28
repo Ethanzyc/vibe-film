@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!-- vibe-film 最小渲染契约模板：页面只暴露 render(t)，一切画面由 t 决定。
+     确定性三规矩：禁 rAF/Date.now/无种子随机；禁 CSS transition；渲染中途不加载资源。
+     style.js 导出 COLORS/FONTS/SIZES（全片唯一真相源，契约基准截图从这里出）。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  html,body{margin:0;background:#0A0A0F;}
+  #stage{width:1920px;height:1080px;position:relative;overflow:hidden;}
+  canvas{display:block;width:1920px;height:1080px;}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="cv" width="1920" height="1080"></canvas></div>
+<script src="style.js"></script>
+<script src="timeline.js"></script>  <!-- 唯一时钟与文案真相源：BAR/DUR/SHOTS/HOLDS/IMPACTS/CUES/COPY 常量 -->
+<script src="scenes.js"></script>    <!-- 各镜画面函数：每个 shot 是 (ctx, t, lt, dur) => 画整帧 -->
+<script>
+// ── 规则烘焙 helper（学 anatomy「make helpers do it, so nothing escapes」）──
+// 规则不靠自觉靠工具：白闪/金词/字幕停留三类高频违规，在构建期直接抛错。
+// 白闪：只允许落在 timeline.js 白名单秒上、恰 1 帧（30fps）。画白闪一律走这里，
+// 绕过白名单手画 = check-build.py 会抓（代码 cue ↔ 表内白闪窗对账）。
+window.flashAtWhitelist = function (t, impacts, fps = 30) {
+  const f = Math.round(t * fps);
+  return (impacts || []).some(s => Math.round(s * fps) === f) ? 1 : 0;
+};
+// 金句金词：只收单字数组。词组数组会让 includes 按单字匹配恒 false → 金词静默变白
+// （《伪》镜判例：'伪也' 永远匹配不上，机审看不出，只有抽帧裁切能抓）。
+window.goldOf = function (chars) {
+  for (const c of chars) {
+    if (typeof c !== 'string' || [...c].length !== 1)
+      throw new Error('goldOf: 金词必须单字数组，收到: ' + JSON.stringify(c));
+  }
+  return chars;
+};
+// 字幕停留断言：每句 ≥2.5s（硬规则）。写 SHOTS/COPY 时调用，违例构建期即报错，
+// 不必等渲染完抽帧才发现。
+window.assertHold = function (t0, t1, line = '') {
+  if (t1 - t0 < 2.5)
+    throw new Error('字幕停留 ' + (t1 - t0).toFixed(2) + 's < 2.5s：' + line);
+};
+// CUES 事件脉冲（音画同表）：CUES = [{t, sfx, visual?}] 在 timeline.js 声明一次，
+// 画面读它做点亮/上光脉冲（本 helper），gen-sfx.py 读它出声（check-build --export-cues 导出）。
+// 返回各次命中的衰减脉冲之和（0..1+）；decay 越小越「电」，attack 是起音帧数保护。
+window.cuePulse = function (t, cues, sfx, { decay = 0.18, attack = 0.012 } = {}) {
+  let v = 0;
+  for (const c of cues || []) {
+    if (sfx && c.sfx !== sfx) continue;
+    const d = t - c.t;
+    if (d >= -attack && d < decay * 6)
+      v += d < 0 ? 1 + d / attack : Math.exp(-d / decay);
+  }
+  return v;
+};
+</script>
+<script>
+const ctx = document.getElementById('cv').getContext('2d');
+window.render = function (t) {          // 唯一入口：t(秒) → 整帧
+  ctx.clearRect(0, 0, 1920, 1080);      // 必须完全重绘（半透明底会逐帧叠影）
+  ctx.save();
+  for (const shot of window.SHOTS) {
+    if (t >= shot.start && t < shot.end) {
+      shot.draw(ctx, t, t - shot.start, shot.end - shot.start);
+    }
+  }
+  ctx.restore();
+};
+window.READY = true;                    // 字体/素材全部加载完才置 true（导出器等它）
+</script>
+</body>
+</html>
