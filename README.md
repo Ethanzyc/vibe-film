@@ -80,32 +80,9 @@ python3 ~/.zcode/skills/vibe-film/scripts/selftest.py    # 17 例全 PASS 即就
 
 ## 它怎么工作
 
-分工铁律：**人管选题、逐镜表、方向确认、验收；agent 管对标逆向、写码渲染、自查返工。** 八个步骤，四道人工闸门（🛑），三个机器校验器：
+分工铁律：**人管选题、逐镜表、方向确认、验收；agent 管对标逆向、写码渲染、自查返工。** 五个核心步骤，人工闸门用琥珀标出：
 
-```mermaid
-flowchart TD
-    S0["0 · 环境检查（一次）"] --> S1["1 · 一次问清（≤5 问）"]
-    S1 --> S2["2 · 选题门 + 九列逐镜表<br>五问门 · 锚点测试 · 三候选结构"]
-    S2 --> G1{{"🛑 人审：表过了才准写码"}}
-    G1 --> S3["3 · 对标帧逆向<br>4-6 张逐张看图，写可执行规范"]
-    S3 --> S4["4 · 音频先行<br>合成 BGM / 真曲节拍网格"]
-    S4 --> G2{{"🛑 BGM 小样试听"}}
-    G2 --> S5["5 · 风格帧 + 能力展示镜样片"]
-    S5 --> G3{{"🛑 方向与夸张度确认"}}
-    G3 --> S6["6 · 分段渲染<br>段 1 先行产契约基准 → 其余段并行<br>段内自查 ≥2 轮"]
-    S6 --> S7["7 · 总装<br>concat → 混音 → loudnorm"]
-    S7 --> S8["8 · 验收 + 交付<br>技术检查 + 审片写观察"]
-    S8 --> G4{{"🛑 用户亲验"}}
-
-    V3["selftest.py<br>17 例自检"] -. 装好后验证 .-> S0
-    V1["check-storyboard.py<br>九列表机审"] -. FAIL 清零才继续 .-> S2
-    V2["check-build.py<br>源码级对账"] -. FAIL 清零才总装 .-> S7
-
-    classDef gate fill:#fef3c7,stroke:#d97706,color:#92400e;
-    classDef check fill:#e0f2fe,stroke:#0284c7,color:#075985;
-    class G1,G2,G3,G4 gate
-    class V1,V2,V3 check
-```
+![vibe-film 管线：一次问清 → 选题门·九列表 → 对标帧逆向 → 音频先行 → 渲染·交付，写不出「献给每一个___的人」不立项](docs/screenshots/workflow.png)
 
 三个校验器把质量从「目测」变成「程序判定」：
 
