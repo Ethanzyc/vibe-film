@@ -5,7 +5,7 @@ Checks:
   1. Table parses with exactly 9 columns
   2. Time column: contiguous, starts at 0, ends at declared duration, and either
      - 3s multiples (合成曲模式，默认；2s/4s 变奏 WARN), or
-     - on the beat grid of a beats.json (--grid，真曲模式：2026-10-27 制作人拍板，
+     - on the beat grid of a beats.json (--grid，真曲模式：2026-10-27 定版，
        真曲片时间列基准 = beats.py 检测网格；边界距最近下拍 ≤ --grid-tol，首镜 0 豁免)
   3. 中文字幕: non-empty, ≤2 行 (sentences ≤18 chars each, hard-fail >24)
   4. EN subtitle non-empty (双语字幕硬规则)
