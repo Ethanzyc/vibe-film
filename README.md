@@ -38,13 +38,13 @@
 
 ## 快速开始
 
-**第一步**——把这句话发给你的 agent（Claude Code / zcode / 其他编码 agent），剩下的它自己搞定：
+**第一步**——发给你的 agent：
 
-> 请安装 vibe-film skill：clone https://github.com/Ethanzyc/vibe-film 到本地，链接进你的 skills 目录（用户级或项目级均可），按 README 依赖表检查 Python 3 / numpy / ffmpeg / Node 18+ Playwright（缺什么先告诉我），最后跑 `python3 scripts/selftest.py`，17 例全 PASS 就告诉我装好了。
+> 请安装 vibe-film skill：clone https://github.com/Ethanzyc/vibe-film 到本地，链接进你的 skills 目录
 
-**第二步**——开工，再发一句：
+**第二步**——开工：
 
-> 帮我把「锚定效应」做成一支无口播知识情绪片，90 秒左右，结尾要有一句献给×××的话。
+> /vibe-film 锚定效应
 
 agent 会先过五问选题门、给你九列逐镜表人审，然后走完全部八步。
 
