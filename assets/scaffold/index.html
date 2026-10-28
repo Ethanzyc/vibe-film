@@ -26,7 +26,7 @@ window.flashAtWhitelist = function (t, impacts, fps = 30) {
   return (impacts || []).some(s => Math.round(s * fps) === f) ? 1 : 0;
 };
 // 金句金词：只收单字数组。词组数组会让 includes 按单字匹配恒 false → 金词静默变白
-// （《伪》镜判例：'伪也' 永远匹配不上，机审看不出，只有抽帧裁切能抓）。
+// （实测判例：'伪也' 这类词组永远匹配不上，机审看不出，只有抽帧裁切能抓）。
 window.goldOf = function (chars) {
   for (const c of chars) {
     if (typeof c !== 'string' || [...c].length !== 1)

@@ -152,7 +152,7 @@ def parse_timeline(tl: Path):
             continue  # 表达式：若在 Array.from 惯用法内由下方展开
         cues.append((t, visual.group(2) if visual else "", sfx.group(2) if sfx else ""))
     # 展开式事件序列惯用法：...Array.from({length: N}, (_, i) => ({ t: A + i * STEP, sfx: 'X' }))
-    # （ai-studio-promo 接力点亮判例）。密事件序列写这条，解析器展开成逐个 cue。
+    # （promo 片接力点亮判例）。密事件序列写这条，解析器展开成逐个 cue。
     unroll_spans = []
     for m in re.finditer(
             r"Array\.from\(\s*\{\s*length:\s*(\d+)\s*\}\s*,\s*\([^)]*\)\s*=>\s*\(\s*\{([^}]*)\}\s*\)\s*\)", text):

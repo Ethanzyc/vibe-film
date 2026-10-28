@@ -158,7 +158,7 @@ sfx = np.zeros(N)
 impacts = sorted(float(x) for x in args.impacts.split(",") if x.strip())
 # 吸气→静音→撞击（sound.md §5 曲线一）：whoosh 是落点前的吸气（峰在呼吸窗起点），
 # riser 提前收口，撞击落在白闪帧上、是静音后的第一个声音——旧版 whoosh 峰在切点前 0.35s
-# 且垫底不停，压住了 drop 前的呼吸（check-audio 实测 dip<4dB，2026-10-27《伪》判例）
+# 且垫底不停，压住了 drop 前的呼吸（check-audio 实测 dip<4dB，2026-10-27 实测判例）
 GAP = 0.45          # 呼吸窗长度（≈80BPM 的 0.6 拍）
 BREATH_GAIN = 0.3   # 呼吸窗内铺垫压到的电平（≈ −10.5dB）
 for at in impacts:

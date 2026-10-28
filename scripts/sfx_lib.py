@@ -96,7 +96,7 @@ def downlifter(rng, dur=1.0):
     return np.tanh((body * 0.5 + noise) * (1 - tt / dur) ** 1.6 * 0.9)
 
 
-# ── UI/事件类（ai-studio-promo 判例：bell=点亮、tick=知识星、密度即推进）──
+# ── UI/事件类（promo 片判例：bell=点亮、tick=知识星、密度即推进）──
 def bell(rng, note=88.0, dur=1.2, ratio=3.01, index=3.2):
     """FM 玻璃钟（节点点亮/金句点亮）。note=载波频率 Hz 或 MIDI 数字。"""
     f = 440.0 * 2 ** ((note - 69) / 12) if note < 128 else note

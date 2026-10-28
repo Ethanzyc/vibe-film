@@ -60,7 +60,7 @@ export const CUES = [
 工作流：**Step 6 段码写 CUES**（画面用 `cuePulse(t, CUES, 'tick')` 做点亮脉冲）→ **Step 7** `check-build.py <项目> --export-cues audio/cues.json`（审计+导出同一解析器：t 超段时长 FAIL、未知 sfx 词 WARN）→ `gen-sfx.py --cues audio/cues.json --dur <总秒> --out audio/sfx.wav` → `SFX=audio/sfx.wav sh scripts/assemble.sh …`（混在 BGM 底上，SFX_GAIN 默认 0.9）。
 
 - 词表（sfx_lib.py 单一实现，gen-audio/gen-sfx 共用）：impact/big_impact/boom/whoosh/riser/downlifter/bell/tick/pop/click/swipe/shimmer。whoosh 峰对位公式内建（放置 = t−0.72×dur）；cue 可带 `gain/pan/note` 覆盖缺省
-- **ai-studio-promo 判例（点亮密度=推进感）**：61 星接力点亮 = 16 组 tick 沿音阶上行（每 4 个加一记音阶 bell、gain 随进度 0.2→0.33 渐强、pan 交替）——「密度即推进」；bell=点亮、tick=知识星、shimmer=全亮/手机升起、impact+crash 柔配=落版。重音只给最重要的 1-2 处（「每个重拍都 impact」是默认味，见上节）
+- **promo 片判例（点亮密度=推进感）**：61 星接力点亮 = 16 组 tick 沿音阶上行（每 4 个加一记音阶 bell、gain 随进度 0.2→0.33 渐强、pan 交替）——「密度即推进」；bell=点亮、tick=知识星、shimmer=全亮/手机升起、impact+crash 柔配=落版。重音只给最重要的 1-2 处（「每个重拍都 impact」是默认味，见上节）
 - 事件密度纪律：tick 类连发太密就隔几次一个（数字跳动判例）；一段内同类事件音色统一，别每镜换
 
 ## 声音的默认味（自 motion-showreel §12 迁入；换配方时对照）
