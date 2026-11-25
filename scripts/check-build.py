@@ -26,6 +26,12 @@ per-seg source of truth for DUR / CUES / COPY):
      落在本段内，FAIL); an sfx word outside the gen-sfx vocabulary is WARN (gen-sfx 会
      跳过). --export-cues <path> dumps all sfx-bearing cues with absolute seconds as
      JSON for gen-sfx.py（音画同表：画面读 CUES 做点亮脉冲，gen-sfx 出声）.
+     v1.8.1: the per-seg cue list, DUR and OFFSET come from node actually importing
+     timeline.js (what the page really plays) — so gain / pan / note survive the export
+     and helper-expanded cues (row(...), Array.from) are neither skipped by the audit nor
+     dropped from the export. The regex pass still runs and anything only it sees gets
+     audited too. No node / import failure = fall back to regex with a WARN that says
+     what gets lost (needs node on PATH).
 
 Usage:  python3 check-build.py <project-slug-dir> [--storyboard <path>] [--export-cues <path>]
         (default storyboard: <project>/分镜与文案.md)
@@ -184,7 +190,10 @@ def parse_timeline(tl: Path):
     return dur, dur_err, cues, cue_errs
 
 
-_COPY_KEY = re.compile(r"\b(zh|en):\s*(['\"`])(.*?)\2", re.S)
+_COPY_KEY = re.compile(r"\b(zh|en):\s*(['\"`])((?:\\[\s\S]|(?!\2).)*)\2", re.S)
+# 字符串里可以有转义引号（'It\'s gone.'、"say \"hi\""）。旧写法读到第一个撇号就断，把 It\'s 截成 It\，
+# 于是每一句带撇号的英文都报一次假的「表内英文未在代码中逐字找到」
+_UNESCAPE = re.compile(r"\\(['\"`])")
 
 
 def parse_seg_copy(seg: Path):
@@ -203,7 +212,7 @@ def parse_seg_copy(seg: Path):
             continue
         in_tl = f.name == "timeline.js"
         for m in _COPY_KEY.finditer(text):
-            v = re.sub(r"\$\{[^}]*\}", "", m.group(3))
+            v = _UNESCAPE.sub(r"\1", re.sub(r"\$\{[^}]*\}", "", m.group(3)))
             if in_tl:
                 (tl_zh if m.group(1) == "zh" else tl_en).append(v)
             else:
@@ -244,13 +253,51 @@ def _quote_of(info_line: str) -> str:
     return norm(m.group(1)) if m else ""
 
 
+def real_timeline(tl: Path):
+    """让 node 真 import 这份 timeline.js，读出页面实际在用的 OFFSET / DUR / CUES。
+
+    正则只认得 { t, sfx, visual } 三个字段，也展不开 row(...) 这类辅助函数：事件音的 gain / pan
+    就是这样被 --export-cues 丢掉的（gen-sfx 只好按词表默认值出声，整条事件层比设计的响了一倍，
+    把配乐的 drop 呼吸填平——2026-11-25 成片复测抓到）。
+    返回 ({"OFFSET", "DUR", "CUES"} 或 None, 错误信息或 None)。模块 import 不了不算致命：调用方退回
+    正则结果，但必须把「会丢什么」说出口。"""
+    import json
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if not node:
+        return None, "找不到 node"
+    code = ("import(process.argv[1]).then(m => process.stdout.write(JSON.stringify("
+            "{ OFFSET: m.OFFSET, DUR: m.DUR, CUES: m.CUES ?? [] })))"
+            ".catch(e => { process.stderr.write(String((e && e.message) || e)); process.exit(3); })")
+    try:
+        r = subprocess.run([node, "--input-type=module", "-e", code, tl.resolve().as_uri()],
+                           capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return None, f"node 调用失败：{e}"
+    if r.returncode != 0:
+        return None, (r.stderr or "").strip()[-160:] or f"node 退出码 {r.returncode}"
+    try:
+        data = json.loads(r.stdout)
+    except ValueError as e:
+        return None, f"模块输出不是合法 JSON：{e}"
+    if not isinstance(data, dict) or not isinstance(data.get("CUES"), list):
+        return None, "模块没有导出 CUES 数组"
+    return data, None
+
+
+def _num(v):
+    """把可能是数字的东西收成 float；不是数字（含 bool）返回 None。"""
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("project")
     ap.add_argument("--storyboard", default=None)
     ap.add_argument("--export-cues", default=None, metavar="PATH",
                     help="把各段 CUES（含 sfx 的音画事件）导出为 JSON（gen-sfx.py 消费）；"
-                         "绝对秒 = 段偏移 + 段内 t。审计 FAIL 也会导出（数据可用于调试）")
+                         "绝对秒 = 段偏移 + 段内 t，gain / pan / note 原样带出。审计 FAIL 也会导出（数据可用于调试）")
     args = ap.parse_args()
 
     project = Path(args.project)
@@ -292,7 +339,8 @@ def main():
     table_flash_windows = [(a, b) for (a, b, _t, _zh, _en, tr) in rows
                            if ("白闪" in tr or "闪" in tr)]
     code_flash_times = []
-    all_cues = []  # (seg_name, seg_lo, t, sfx, visual) — 供 --export-cues
+    all_cues = []  # (seg_name, seg_lo, t, sfx, visual)
+    export_rows = []  # 同上 + 真实 cue 对象（带 gain / pan / note；正则见到的为 None）
     offset, sum_dur = 0.0, 0.0
     boundaries = []
     all_code_zh, all_code_en, all_advisory_zh = [], [], []
@@ -305,6 +353,11 @@ def main():
         dur, dur_err, cues, cue_errs = parse_timeline(tl)
         for err in cue_errs:
             fails.append(f"{seg.name}: CUES {err}")
+        real, real_err = real_timeline(tl)
+        real_dur = _num(real.get("DUR")) if real is not None else None
+        if real_dur is not None and (dur is None or dur_err):
+            infos.append(f"{seg.name}: DUR 表达式正则求不出，按真实模块的 {real_dur:g}s 对账")
+            dur, dur_err = float(real_dur), None
         tl_zh, tl_en, other_zh, other_en = parse_seg_copy(seg)
         if dur_err:
             warns.append(f"{seg.name}: {dur_err}，时间对账 NOT CHECKED")
@@ -317,13 +370,37 @@ def main():
             sum_dur += dur
             offset += dur
         seg_lo = offset - (dur or 0)
-        for (t, visual, sfx) in cues:
+        # 事件表以真实模块为准（字段全带）；正则多见到的（别的 CUES* 数组、DROPS/IMPACTS）照样校验，一个不漏
+        cues = [(t, v, s, None) for (t, v, s) in cues]
+        if real is None:
+            warns.append(f"{seg.name}: 读不到真实 CUES（{real_err}）——退回正则解析："
+                         "辅助函数展开的事件不校验，导出的 gain / pan 会丢")
+        else:
+            mod_off = _num(real.get("OFFSET"))
+            if mod_off is not None and abs(mod_off - seg_lo) > 0.01:
+                fails.append(f"{seg.name}: OFFSET {mod_off:g}s ≠ 前面各段 DUR 之和 {seg_lo:g}s（页面的绝对时间会错位）")
+            if real_dur is not None and dur is not None and abs(real_dur - dur) > 0.01:
+                fails.append(f"{seg.name}: DUR 正则求值 {dur:g}s ≠ 真实模块 {real_dur:g}s")
+            real_cues = [(_num(c["t"]), str(c.get("visual") or ""), str(c.get("sfx") or ""), c)
+                         for c in real["CUES"] if isinstance(c, dict) and _num(c.get("t")) is not None]
+            bad = len(real["CUES"]) - len(real_cues)
+            if bad:
+                fails.append(f"{seg.name}: 真实 CUES 里有 {bad} 条形状不对（不是对象，或 t 不是数字）")
+            seen = {(round(t, 3), s) for (t, _v, s, _c) in real_cues}
+            n_reg = sum(1 for c in cues if c[2])
+            n_real = sum(1 for c in real_cues if c[2])
+            if n_reg != n_real:
+                infos.append(f"{seg.name}: 正则见到 {n_reg} 条带音效的事件，真实 CUES 有 {n_real} 条"
+                             "（差在辅助函数展开式或别的 CUES* 数组）——两边都校验，导出以真实 CUES 为准")
+            cues = real_cues + [c for c in cues if c[2] and (round(c[0], 3), c[2]) not in seen]
+        for (t, visual, sfx, src) in cues:
             if dur is not None and (t < -0.01 or t > dur + 0.01):
                 fails.append(f"{seg.name}: CUES t={t}s 超出段时长 {dur:g}s（音画事件必须落在本段内）")
             if sfx and sfx not in SFX_WORDS:
                 warns.append(f"{seg.name}: CUES sfx='{sfx}' 不在词表（gen-sfx 会跳过；确认拼写或先扩词表）: t={t}")
             if sfx:
                 all_cues.append((seg.name, seg_lo, t, sfx, visual))
+                export_rows.append((seg.name, seg_lo, t, sfx, visual, src))
             if re.search(r"flash|闪", visual, re.I):
                 code_flash_times.append((seg.name, t, seg_lo + t, visual))
         all_code_zh += [(seg.name, z) for z in tl_zh if norm(z)]
@@ -401,13 +478,21 @@ def main():
 
     if args.export_cues:
         import json
-        out = [{"seg": s, "t": round(t, 3), "abs_t": round(seg_lo + t, 3), "sfx": sfx, "visual": v}
-               for (s, seg_lo, t, sfx, v) in all_cues]
-        from pathlib import Path as _P
-        dst = _P(args.export_cues)
+        out = []
+        for (s, seg_lo, t, sfx, v, src) in export_rows:
+            row = {"seg": s, "t": round(float(t), 3), "abs_t": round(seg_lo + float(t), 3), "sfx": sfx, "visual": v}
+            for k in ("gain", "pan", "pitch"):
+                if src is not None and k in src:
+                    row[k] = src[k]
+            if src is not None and "note" in src:
+                row["desc"] = src["note"]    # timeline 的 note 是给人读的说明；bell / pop 的音高另走 pitch
+            out.append(row)
+        dst = Path(args.export_cues)
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
-        print(f"CUES → {dst}（{len(out)} 个事件，含绝对秒；gen-sfx.py 消费）"
+        n_gain = sum(1 for r in out if "gain" in r)
+        print(f"CUES → {dst}（{len(out)} 个事件，含绝对秒；{n_gain} 个带 gain；gen-sfx.py 消费）"
+              + ("——注意：有段落退回了正则解析，见上面的 WARN" if any(r[5] is None for r in export_rows) else "")
               + ("——注意：审计存在 FAIL，导出仅供调试" if fails else ""))
     sys.exit(1 if fails else 0)
 

@@ -169,6 +169,75 @@ def main():
         check("export-cues 导出内容正确", rc == 0 and len(data) == 1
               and data[0]["sfx"] == "impact" and abs(data[0]["abs_t"] - 3) < 0.01, out + str(data))
 
+        # ── v1.8.1：事件表以真实模块为准（node 真 import timeline.js）────────────
+        GOOD_CUES = ("export const CUES = [\n"
+                     "  { t: 3, sfx: 'impact', visual: 'white flash, exactly 1 frame' },\n];\n")
+        assert GOOD_CUES in GOOD_TIMELINE, "fixture：GOOD_TIMELINE 的 CUES 块变了，同步改这里"
+
+        # 1) gain / pan 原样带出，说明文字进 desc。旧版只带 t 与 sfx：gen-sfx 全按词表默认值出声，
+        #    事件层比设计的响了一倍，把配乐的 drop 呼吸填平（成片复测抓到）
+        gP = tmp / "proj-gain"
+        write_project(gP, GOOD_TABLE_6S, GOOD_TIMELINE.replace(
+            "visual: 'white flash, exactly 1 frame' }",
+            "visual: 'white flash, exactly 1 frame', gain: 0.42, pan: 0.25, note: '落地' }"))
+        exp2 = tmp / "cues-gain.json"
+        rc, out = run("check-build.py", str(gP), "--export-cues", str(exp2))
+        data = _json.loads(exp2.read_text(encoding="utf-8"))
+        check("export-cues 带出 gain / pan，说明进 desc", rc == 0 and len(data) == 1
+              and data[0].get("gain") == 0.42 and data[0].get("pan") == 0.25
+              and data[0].get("desc") == "落地" and "note" not in data[0], out + str(data))
+
+        # 2) 辅助函数展开的事件：旧正则一条都看不见（既不校验也不导出），现在按真实模块全收
+        ROW = ("const row = (n, t0, dt, sfx, gain) => Array.from({ length: n }, (_, i) => ({ t: t0 + i * dt, sfx, gain }));\n"
+               "export const CUES = [{ t: 3, sfx: 'impact', visual: 'white flash, exactly 1 frame' }, ...ROWCALL];\n")
+        rP = tmp / "proj-row"
+        write_project(rP, GOOD_TABLE_6S, GOOD_TIMELINE.replace(GOOD_CUES, ROW.replace("ROWCALL", "row(3, 1, 0.25, 'tick', 0.1)")))
+        exp3 = tmp / "cues-row.json"
+        rc, out = run("check-build.py", str(rP), "--export-cues", str(exp3))
+        data = _json.loads(exp3.read_text(encoding="utf-8"))
+        ticks = [d for d in data if d["sfx"] == "tick"]
+        check("export-cues 收全辅助函数展开的事件", rc == 0 and len(data) == 4 and len(ticks) == 3
+              and all(d.get("gain") == 0.1 for d in ticks) and abs(ticks[-1]["abs_t"] - 1.5) < 0.01, out + str(data))
+        write_project(rP, GOOD_TABLE_6S, GOOD_TIMELINE.replace(GOOD_CUES, ROW.replace("ROWCALL", "row(3, 5.5, 0.5, 'tick', 0.1)")))
+        rc, out = run("check-build.py", str(rP))
+        check("planted 辅助函数展开的事件超段时长被抓", rc == 1 and "超出段时长" in out, out)
+
+        # 3) OFFSET 与前面各段 DUR 之和不符 = 页面绝对时间错位
+        oP = tmp / "proj-offset"
+        write_project(oP, GOOD_TABLE_6S, "export const OFFSET = 3;\n" + GOOD_TIMELINE)
+        rc, out = run("check-build.py", str(oP))
+        check("planted OFFSET 与 DUR 之和不符被抓", rc == 1 and "OFFSET" in out, out)
+
+        # 4) 英文里的转义撇号不再报假 WARN
+        aP = tmp / "proj-apos"
+        write_project(aP, GOOD_TABLE_6S.replace("It is gone.", "It's gone."),
+                      GOOD_TIMELINE.replace("It is gone.", "It\\'s gone."))
+        rc, out = run("check-build.py", str(aP))
+        check("英文转义撇号不报假 WARN", rc == 0 and "表内英文未在代码中逐字找到" not in out, out)
+
+        # 5) 导出的事件表要能直接喂给 gen-sfx：timeline 的 note 是说明（进 desc），音高另走 pitch。
+        #    以前说明文字会被当成频率传进 pop / bell，在 numpy 深处抛一串类型错误
+        bP = tmp / "proj-pitch"
+        write_project(bP, GOOD_TABLE_6S, GOOD_TIMELINE.replace(GOOD_CUES,
+            "export const CUES = [{ t: 3, sfx: 'impact', visual: 'white flash, exactly 1 frame' },\n"
+            "  { t: 1, sfx: 'pop', gain: 0.3, note: '卡片弹出' },"
+            " { t: 2, sfx: 'bell', gain: 0.3, pitch: 88, note: '点亮' }];\n"))
+        exp4 = tmp / "cues-pitch.json"
+        rc, out = run("check-build.py", str(bP), "--export-cues", str(exp4))
+        wav = tmp / "sfx.wav"
+        rc2, out2 = run("gen-sfx.py", "--cues", str(exp4), "--dur", "6", "--out", str(wav))
+        data = _json.loads(exp4.read_text(encoding="utf-8"))
+        check("导出的事件表能直接喂给 gen-sfx", rc == 0 and rc2 == 0 and wav.exists()
+              and any(d["sfx"] == "bell" and d.get("pitch") == 88 and d.get("desc") == "点亮" for d in data)
+              and any(d["sfx"] == "pop" and d.get("desc") == "卡片弹出" for d in data), out + out2 + str(data))
+        for d in data:
+            if d["sfx"] == "pop":
+                d["pitch"] = "高"          # 埋的毛病：音高不是数字
+        exp5 = tmp / "cues-badpitch.json"
+        exp5.write_text(_json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        rc3, out3 = run("gen-sfx.py", "--cues", str(exp5), "--dur", "6", "--out", str(tmp / "sfx2.wav"))
+        check("planted 音高不是数字被 gen-sfx 明确报错", rc3 != 0 and "pitch / note 要是频率" in out3, out3)
+
         gs = (HERE / "gen-sfx.py").read_text(encoding="utf-8")
         cbt = (HERE / "check-build.py").read_text(encoding="utf-8")
         w1 = set(__import__("re").findall(r'"(\w+)"', __import__("re").search(r"WORDS = \{([^}]*)\}", gs).group(1)))

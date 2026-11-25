@@ -16,7 +16,8 @@
   pop = 元素弹出 · click = 点击/吸附 · swipe = 滑过 · shimmer = 全亮/聚合/成功
 用法:
   python3 gen-sfx.py --cues cues.json --dur 50 --out audio/sfx.wav [--seed 20261027]
-cue 字段: t(必) sfx(必) gain(0-1,缺省按词表) pan(-1..1) note(频率 Hz 或 MIDI, bell/pop 用)
+cue 字段: t(必) sfx(必) gain(0-1,缺省按词表) pan(-1..1) pitch(频率 Hz 或 MIDI 号，bell/pop 用)
+          note / desc(给人读的说明，不出声)
 """
 import argparse
 import json
@@ -38,6 +39,11 @@ DEFAULT_GAIN = {
 }
 # whoosh/riser 是"事件前"的声音：whoosh 峰对位公式内建；riser 默认 3s 结束于事件
 LEAD = {"whoosh": lambda d: -WHOOSH_PEAK * 0.7, "riser": lambda d: -min(3.0, d)}
+
+
+def _is_num(v):
+    """是数字（bool 不算）。"""
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
 def main():
@@ -67,6 +73,12 @@ def main():
         gain = float(c.get("gain", DEFAULT_GAIN[word]))
         pan = float(c.get("pan", 0.0))
         note = c.get("note")
+        # 音高只认数字。timeline 里的 note 一直是给人读的说明（导出时改名 desc）；以前说明文字也会被当成频率
+        # 传进 pop / bell，在 numpy 深处抛一串类型错误。手写 JSON 里 note 是数字的老写法仍然认。
+        pitch = c.get("pitch", note if _is_num(note) else None)
+        if pitch is not None and not _is_num(pitch):
+            raise SystemExit(f"gen-sfx: t={t}: pitch / note 要是频率 Hz 或 MIDI 号（数字），收到 {pitch!r}"
+                             "——说明文字请写进 desc")
         if word == "impact":
             sig = impact(rng)
         elif word == "big_impact":
@@ -80,11 +92,11 @@ def main():
         elif word == "downlifter":
             sig = downlifter(rng)
         elif word == "bell":
-            sig = bell(rng, note if note is not None else 1244.5)  # 缺省 D#6 玻璃感
+            sig = bell(rng, pitch if pitch is not None else 1244.5)  # 缺省 D#6 玻璃感
         elif word == "tick":
             sig = tick()
         elif word == "pop":
-            sig = pop(rng, f0=note if note is not None else 1046.5)
+            sig = pop(rng, f0=pitch if pitch is not None else 1046.5)
         elif word == "click":
             sig = click(rng)
         elif word == "swipe":

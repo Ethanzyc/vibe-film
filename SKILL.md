@@ -106,11 +106,11 @@ Node 18+ / ffmpeg / Playwright+Chromium（或系统 Chrome）。依赖装齐再�
 
 每段**并排自查 ≥2 轮**：关键帧与同功能对标帧拼图对比+九项密度清单逐项勾（清单见 [references/reverse-audit.md](references/reverse-audit.md)）。**执行方式按能力降级**：优先派没参与制作的 reviewer 子代理逐项核查（只给帧图+清单，不给代码和自己的审片记录）；没有子代理就自己严格逐项——**不允许目测放行。拿到自查结论先按 fail 项改完，再汇报「做完了+结论+改了什么」；拿原始结论汇报但不修复=违规。**
 
-**事件音效（CUES 音画同表）**：段内的事件级声音（节点点亮/数字跳动/卡片入光/金句点亮）写在各段 timeline.js 的 `CUES = [{t, sfx, gain?, pan?, note?}]`——画面用 `cuePulse()` 读它做点亮脉冲，音频层用同一份出声（词表与工作流见 [references/audio.md](references/audio.md) 事件层节）。只在有信息作用的动作上配音效，重音只给最重要的 1-2 处。
+**事件音效（CUES 音画同表）**：段内的事件级声音（节点点亮/数字跳动/卡片入光/金句点亮）写在各段 timeline.js 的 `CUES = [{t, sfx, gain?, pan?, note?, pitch?}]`（note 是给人读的说明，pitch 给 bell / pop 定音高）——画面用 `cuePulse()` 读它做点亮脉冲，音频层用同一份出声（词表与工作流见 [references/audio.md](references/audio.md) 事件层节）。只在有信息作用的动作上配音效，重音只给最重要的 1-2 处。
 
 ### 第 7 步：总装
 
-总装前先跑**源码级对账**：`python3 scripts/check-build.py <项目slug>/`——段码 COPY 逐字 ↔ 分镜表、各段 DUR ↔ 表总时长、白闪 cue ↔ 表内白闪窗、CUES 事件越界/词表校验、上画面字面量扫描（selfcheck 口径：四个看帧的 QC 全漏掉的数字改动，源码对账抓得到）。FAIL 清零才准总装；前提是字幕 copy 按 v1.3+ 契约放在各段 timeline.js（旧布局项目会如实报 FAIL）。然后 concat 帧级直拼 → 混音 → loudnorm I=-15 TP=-1.5 → faststart（scripts/assemble.sh）。**有事件音效时**：`check-build.py <项目> --export-cues audio/cues.json` → `gen-sfx.py --cues … --out audio/sfx.wav` → `SFX=audio/sfx.wav sh scripts/assemble.sh …`（音效词表/判例见 audio.md 事件层节）。段界同色系 match cut 不加白闪；白闪只出现在分镜表指定处。
+总装前先跑**源码级对账**：`python3 scripts/check-build.py <项目slug>/`——段码 COPY 逐字 ↔ 分镜表、各段 DUR ↔ 表总时长、白闪 cue ↔ 表内白闪窗、CUES 事件越界/词表校验、上画面字面量扫描（selfcheck 口径：四个看帧的 QC 全漏掉的数字改动，源码对账抓得到）。FAIL 清零才准总装；前提是字幕 copy 按 v1.3+ 契约放在各段 timeline.js（旧布局项目会如实报 FAIL）。然后 concat 帧级直拼 → 混音 → 两遍响度规整（线性增益，I=-15 TP=-1.5；单遍 loudnorm 是动态模式，会把编曲的起伏压平）→ faststart（scripts/assemble.sh）。**有事件音效时**：`check-build.py <项目> --export-cues audio/cues.json` → `gen-sfx.py --cues … --out audio/sfx.wav` → `SFX=audio/sfx.wav sh scripts/assemble.sh …`（音效词表/判例见 audio.md 事件层节）。**总装后必须对成片跑一次 `check-audio.py … --drops …`**（响度 / 真峰值 / drop 呼吸），WARN 要解释或修复——中间产物全过不等于成片没问题（有一支片就是在这一步抓到事件表导出丢增益、漏 33 条事件的）。段界同色系 match cut 不加白闪；白闪只出现在分镜表指定处。
 
 ### 第 8 步：验收 + 交付
 
